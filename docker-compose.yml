@@ -1,0 +1,65 @@
+name: suricata-lab
+
+services:
+  backend:
+    image: nginx:alpine
+    container_name: my-backend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: my-suricata
+    depends_on:
+      - backend
+    network_mode: "service:backend" 
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+      - NET_RAW
+    volumes:
+      - ./test.rules:/var/lib/suricata/rules/test.rules
+      - ./logs:/var/log/suricata
+    command: suricata -i eth0 --set stream.checksum-validation=no -S /var/lib/suricata/rules/test.rules
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/config.yml:ro
+      - ./loki:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/suricata:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    depends_on:
+      - loki
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana-data:/var/lib/grafana
+    restart: unless-stopped

@@ -1,0 +1,52 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: suricata-eve
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: suricata-eve
+          source: suricata
+          log_type: eve
+          __path__: /var/log/suricata/eve.json
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            event_type: event_type
+            proto: proto
+            src_ip: src_ip
+            dest_ip: dest_ip
+      - labels:
+          event_type:
+          proto:
+          src_ip:
+          dest_ip:
+
+  - job_name: suricata-fast
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: suricata-fast
+          source: suricata
+          log_type: fast
+          __path__: /var/log/suricata/fast.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<ts>\d{2}/\d{2}/\d{4}-\d{2}:\d{2}:\d{2}\.\d{6})\s+\[\*\*\]\s+\[(?P<sigmeta>[^\]]+)\]\s+\[Classification:\s*(?P<class>[^\]]*)\]\s+\[Priority:\s*(?P<prio>\d+)\]\s+\{(?P<proto>[^}]*)\}\s+(?P<src>[^ ]+)\s+->\s+(?P<dst>.+)$'
+      - labels:
+          proto:
+          class:
+          prio:
+      - timestamp:
+          source: ts
+          format: '01/02/2006-15:04:05.000000'
+

@@ -1,0 +1,36 @@
+# test.rules
+
+alert tcp any any -> any 80 (msg:"TEST TCP dst 80"; sid:100000; rev:1;)
+alert http any any -> any any (msg:"ALERT: Backend di-HIT oleh User!"; flow:to_server,established; http.method; content:"GET"; sid:100001; rev:2;)
+
+# --- Signature-based: SQL Injection ---
+alert http any any -> any any (msg:"SQLi: tautology OR 1=1 in URI"; flow:to_server,established; http.uri; content:"'"; nocase; content:" or "; nocase; distance:0; within:10; content:"1=1"; nocase; sid:100010; rev:1;)
+alert http any any -> any any (msg:"SQLi: UNION SELECT in URI"; flow:to_server,established; http.uri; content:"union"; nocase; content:"select"; nocase; distance:0; within:20; sid:100011; rev:1;)
+
+# --- Signature-based: XSS ---
+alert http any any -> any any (msg:"XSS: <script> tag in URI"; flow:to_server,established; http.uri; content:"<script"; nocase; sid:100020; rev:1;)
+alert http any any -> any any (msg:"XSS: javascript: URI"; flow:to_server,established; http.uri; content:"javascript:"; nocase; sid:100021; rev:1;)
+
+# --- Signature-based: Command Injection ---
+alert http any any -> any any (msg:"CMDi: shell command via URI (curl)"; flow:to_server,established; http.uri; content:"|3B|curl"; nocase; sid:100030; rev:4;)
+alert http any any -> any any (msg:"CMDi: shell command via URI (wget)"; flow:to_server,established; http.uri; content:"|3B|wget"; nocase; sid:100031; rev:4;)
+alert http any any -> any any (msg:"CMDi: shell operator && in URI"; flow:to_server,established; http.uri; content:"&&"; sid:100032; rev:1;)
+
+# --- Signature-based: LFI/RFI ---
+alert http any any -> any any (msg:"LFI: /etc/passwd traversal in URI"; flow:to_server,established; http.uri; content:"../"; depth:10; content:"etc/passwd"; distance:0; within:100; sid:100040; rev:1;)
+
+# --- Signature-based: Admin endpoints ---
+alert http any any -> any any (msg:"Access to admin endpoint"; flow:to_server,established; http.uri; content:"/admin"; nocase; sid:100050; rev:1;)
+
+# --- Recon: Scanner User-Agents ---
+alert http any any -> any any (msg:"Scanner UA: sqlmap"; flow:to_server,established; http.user_agent; content:"sqlmap"; nocase; sid:100060; rev:1;)
+alert http any any -> any any (msg:"Scanner UA: nikto"; flow:to_server,established; http.user_agent; content:"nikto"; nocase; sid:100061; rev:1;)
+alert http any any -> any any (msg:"Scanner UA: nmap"; flow:to_server,established; http.user_agent; content:"nmap"; nocase; sid:100062; rev:1;)
+alert http any any -> any any (msg:"Scanner UA: gobuster"; flow:to_server,established; http.user_agent; content:"gobuster"; nocase; sid:100063; rev:1;)
+alert http any any -> any any (msg:"Scanner UA: dirbuster"; flow:to_server,established; http.user_agent; content:"dirbuster"; nocase; sid:100064; rev:1;)
+
+# --- Recon: High request rate (possible dir brute-force) ---
+alert http any any -> any any (msg:"Possible dir brute force (>=20 req/min)"; flow:to_server,established; http.uri; content:"/"; threshold:type both, track by_src, count 20, seconds 60; sid:100070; rev:1;)
+
+# --- Anomaly: Very long URI ---
+alert http any any -> any any (msg:"Anomaly: long URI (>2048 chars)"; flow:to_server,established; http.uri; pcre:"/.{2049}/"; sid:100080; rev:1;)

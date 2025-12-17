@@ -1,0 +1,76 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Alert rate (5m)",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate({job=\"suricata-eve\", event_type=\"alert\"}[5m]))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal" },
+      "datasource": "Loki"
+    },
+    {
+      "type": "timeseries",
+      "title": "Alerts over time",
+      "gridPos": { "h": 6, "w": 12, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (event_type) (count_over_time({job=\"suricata-eve\", event_type=\"alert\"}[$__interval]))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "datasource": "Loki"
+    },
+    {
+      "type": "table",
+      "title": "Recent alerts (EVE)",
+      "gridPos": { "h": 10, "w": 18, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "{job=\"suricata-eve\", event_type=\"alert\"} | json | line_format \"{{.timestamp}} {{.src_ip}} -> {{.dest_ip}} {{.alert.signature}} (sid={{.alert.signature_id}})\"",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "datasource": "Loki",
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "timeseries",
+      "title": "Top src_ip (alerts count)",
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 6 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (src_ip) (count_over_time({job=\"suricata-eve\", event_type=\"alert\", src_ip=~\".+\"}[$__interval])))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "datasource": "Loki"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["suricata", "loki"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "",
+  "title": "Suricata Overview",
+  "uid": "suricata-overview",
+  "version": 1,
+  "weekStart": ""
+}
+
